@@ -234,14 +234,14 @@ class SessionRecord {
         }
     }
 
-    static deserialize(data) {
+    static async deserialize(data) {
         if (data.version !== SESSION_RECORD_VERSION) {
             this.migrate(data);
         }
         const obj = new this();
         if (data._sessions) {
             for (const [key, entry] of Object.entries(data._sessions)) {
-                obj.sessions[key] = SessionEntry.deserialize(entry);
+                obj.sessions[key] = await SessionEntry.deserialize(entry);
             }
         }
         return obj;
@@ -252,7 +252,7 @@ class SessionRecord {
         this.version = SESSION_RECORD_VERSION;
     }
 
-    serialize() {
+    async serialize() {
         const _sessions = {};
         for (const [key, entry] of Object.entries(this.sessions)) {
             _sessions[key] = entry.serialize();
