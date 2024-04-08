@@ -11,6 +11,9 @@ function assertBuffer(value) {
     }
 }
 
+const { DynamicPool } = require('node-worker-threads-pool')
+
+const workers = new DynamicPool(5)
 
 class SessionEntry {
 
@@ -86,32 +89,62 @@ class SessionEntry {
         return data;
     }
 
-    static deserialize(data) {
+    static async deserialize(data) {
         const obj = new this();
-        obj.registrationId = data.registrationId;
-        obj.currentRatchet = {
-            ephemeralKeyPair: {
-                pubKey: Buffer.from(data.currentRatchet.ephemeralKeyPair.pubKey, 'base64'),
-                privKey: Buffer.from(data.currentRatchet.ephemeralKeyPair.privKey, 'base64')
+        const result = await workers.exec({
+            task: (data) => {
+                const obj = {}
+                function _deserialize_chains(chains_data) {
+                    const r = {};
+                    for (const key of Object.keys(chains_data)) {
+                        const c = chains_data[key];
+                        const messageKeys = {};
+                        for (const [idx, key] of Object.entries(c.messageKeys)) {
+                            messageKeys[idx] = Buffer.from(key, 'base64');
+                        }
+                        r[key] = {
+                            chainKey: {
+                                counter: c.chainKey.counter,
+                                key: c.chainKey.key && Buffer.from(c.chainKey.key, 'base64')
+                            },
+                            chainType: c.chainType,
+                            messageKeys: messageKeys
+                        };
+                    }
+                    return r;
+                }
+
+                obj.registrationId = data.registrationId;
+                obj.currentRatchet = {
+                    ephemeralKeyPair: {
+                        pubKey: Buffer.from(data.currentRatchet.ephemeralKeyPair.pubKey, 'base64'),
+                        privKey: Buffer.from(data.currentRatchet.ephemeralKeyPair.privKey, 'base64')
+                    },
+                    lastRemoteEphemeralKey: Buffer.from(data.currentRatchet.lastRemoteEphemeralKey, 'base64'),
+                    previousCounter: data.currentRatchet.previousCounter,
+                    rootKey: Buffer.from(data.currentRatchet.rootKey, 'base64')
+                };
+                obj.indexInfo = {
+                    baseKey: Buffer.from(data.indexInfo.baseKey, 'base64'),
+                    baseKeyType: data.indexInfo.baseKeyType,
+                    closed: data.indexInfo.closed,
+                    used: data.indexInfo.used,
+                    created: data.indexInfo.created,
+                    remoteIdentityKey: Buffer.from(data.indexInfo.remoteIdentityKey, 'base64')
+                };
+
+                obj._chains = _deserialize_chains(data._chains);
+                if (data.pendingPreKey) {
+                    obj.pendingPreKey = Object.assign({}, data.pendingPreKey);
+                    obj.pendingPreKey.baseKey = Buffer.from(data.pendingPreKey.baseKey, 'base64');
+                }
+                return obj;
             },
-            lastRemoteEphemeralKey: Buffer.from(data.currentRatchet.lastRemoteEphemeralKey, 'base64'),
-            previousCounter: data.currentRatchet.previousCounter,
-            rootKey: Buffer.from(data.currentRatchet.rootKey, 'base64')
-        };
-        obj.indexInfo = {
-            baseKey: Buffer.from(data.indexInfo.baseKey, 'base64'),
-            baseKeyType: data.indexInfo.baseKeyType,
-            closed: data.indexInfo.closed,
-            used: data.indexInfo.used,
-            created: data.indexInfo.created,
-            remoteIdentityKey: Buffer.from(data.indexInfo.remoteIdentityKey, 'base64')
-        };
-        obj._chains = this._deserialize_chains(data._chains);
-        if (data.pendingPreKey) {
-            obj.pendingPreKey = Object.assign({}, data.pendingPreKey);
-            obj.pendingPreKey.baseKey = Buffer.from(data.pendingPreKey.baseKey, 'base64');
-        }
-        return obj;
+            param: data
+        })
+
+        Object.assign(obj, result)
+        return obj
     }
 
     _serialize_chains(chains) {

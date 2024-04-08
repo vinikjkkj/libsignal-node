@@ -9,7 +9,6 @@ const curve = require('./curve');
 const errors = require('./errors');
 const queueJob = require('./queue_job');
 
-
 class SessionBuilder {
 
     constructor(storage, protocolAddress) {
