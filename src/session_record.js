@@ -15,6 +15,49 @@ const { DynamicPool } = require('node-worker-threads-pool')
 
 const workers = new DynamicPool(5)
 
+function convertFields(data, targetType) {
+    // Verifica se o alvo é um tipo válido
+    if (!(typeof targetType === 'function')) {
+        throw new Error('O tipo alvo é inválido.');
+    }
+
+    // Função auxiliar para verificar e converter um valor
+    function convertValue(value) {
+        // Verifica se o valor é um Uint8Array
+        if (value instanceof Uint8Array) {
+            // Converte o valor para Buffer
+            return Buffer.from(value);
+        }
+        // Se não for Uint8Array, retorna o valor original
+        return value;
+    }
+
+    // Função auxiliar para iterar recursivamente sobre os dados
+    function iterate(obj) {
+        // Verifica se o objeto é um array
+        if (Array.isArray(obj)) {
+            // Se for um array, itera sobre cada elemento
+            return obj.map(item => iterate(item));
+        }
+        // Se for um objeto, itera sobre cada propriedade
+        if (typeof obj === 'object' && obj !== null) {
+            const newObj = {};
+            for (const key in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                    // Converte o valor da propriedade
+                    newObj[key] = iterate(obj[key]);
+                }
+            }
+            return newObj;
+        }
+        // Se não for um objeto ou array, retorna o valor convertido
+        return convertValue(obj);
+    }
+
+    // Inicia a iteração recursiva nos dados fornecidos
+    return iterate(data);
+}
+
 class SessionEntry {
 
     constructor() {
@@ -89,62 +132,32 @@ class SessionEntry {
         return data;
     }
 
-    static async deserialize(data) {
+    static deserialize(data) {
         const obj = new this();
-        const result = await workers.exec({
-            task: (data) => {
-                const obj = {}
-                function _deserialize_chains(chains_data) {
-                    const r = {};
-                    for (const key of Object.keys(chains_data)) {
-                        const c = chains_data[key];
-                        const messageKeys = {};
-                        for (const [idx, key] of Object.entries(c.messageKeys)) {
-                            messageKeys[idx] = Buffer.from(key, 'base64');
-                        }
-                        r[key] = {
-                            chainKey: {
-                                counter: c.chainKey.counter,
-                                key: c.chainKey.key && Buffer.from(c.chainKey.key, 'base64')
-                            },
-                            chainType: c.chainType,
-                            messageKeys: messageKeys
-                        };
-                    }
-                    return r;
-                }
-
-                obj.registrationId = data.registrationId;
-                obj.currentRatchet = {
-                    ephemeralKeyPair: {
-                        pubKey: Buffer.from(data.currentRatchet.ephemeralKeyPair.pubKey, 'base64'),
-                        privKey: Buffer.from(data.currentRatchet.ephemeralKeyPair.privKey, 'base64')
-                    },
-                    lastRemoteEphemeralKey: Buffer.from(data.currentRatchet.lastRemoteEphemeralKey, 'base64'),
-                    previousCounter: data.currentRatchet.previousCounter,
-                    rootKey: Buffer.from(data.currentRatchet.rootKey, 'base64')
-                };
-                obj.indexInfo = {
-                    baseKey: Buffer.from(data.indexInfo.baseKey, 'base64'),
-                    baseKeyType: data.indexInfo.baseKeyType,
-                    closed: data.indexInfo.closed,
-                    used: data.indexInfo.used,
-                    created: data.indexInfo.created,
-                    remoteIdentityKey: Buffer.from(data.indexInfo.remoteIdentityKey, 'base64')
-                };
-
-                obj._chains = _deserialize_chains(data._chains);
-                if (data.pendingPreKey) {
-                    obj.pendingPreKey = Object.assign({}, data.pendingPreKey);
-                    obj.pendingPreKey.baseKey = Buffer.from(data.pendingPreKey.baseKey, 'base64');
-                }
-                return obj;
+        obj.registrationId = data.registrationId;
+        obj.currentRatchet = {
+            ephemeralKeyPair: {
+                pubKey: Buffer.from(data.currentRatchet.ephemeralKeyPair.pubKey, 'base64'),
+                privKey: Buffer.from(data.currentRatchet.ephemeralKeyPair.privKey, 'base64')
             },
-            param: data
-        })
-
-        Object.assign(obj, result)
-        return obj
+            lastRemoteEphemeralKey: Buffer.from(data.currentRatchet.lastRemoteEphemeralKey, 'base64'),
+            previousCounter: data.currentRatchet.previousCounter,
+            rootKey: Buffer.from(data.currentRatchet.rootKey, 'base64')
+        };
+        obj.indexInfo = {
+            baseKey: Buffer.from(data.indexInfo.baseKey, 'base64'),
+            baseKeyType: data.indexInfo.baseKeyType,
+            closed: data.indexInfo.closed,
+            used: data.indexInfo.used,
+            created: data.indexInfo.created,
+            remoteIdentityKey: Buffer.from(data.indexInfo.remoteIdentityKey, 'base64')
+        };
+        obj._chains = this._deserialize_chains(data._chains);
+        if (data.pendingPreKey) {
+            obj.pendingPreKey = Object.assign({}, data.pendingPreKey);
+            obj.pendingPreKey.baseKey = Buffer.from(data.pendingPreKey.baseKey, 'base64');
+        }
+        return obj;
     }
 
     _serialize_chains(chains) {
@@ -234,14 +247,14 @@ class SessionRecord {
         }
     }
 
-    static async deserialize(data) {
+    static deserialize(data) {
         if (data.version !== SESSION_RECORD_VERSION) {
             this.migrate(data);
         }
         const obj = new this();
         if (data._sessions) {
             for (const [key, entry] of Object.entries(data._sessions)) {
-                obj.sessions[key] = await SessionEntry.deserialize(entry);
+                obj.sessions[key] = SessionEntry.deserialize(entry);
             }
         }
         return obj;
@@ -300,18 +313,14 @@ class SessionRecord {
 
     closeSession(session) {
         if (this.isClosed(session)) {
-            console.warn("Session already closed", session);
             return;
         }
-        console.info("Closing session:", session);
         session.indexInfo.closed = Date.now();
     }
 
     openSession(session) {
         if (!this.isClosed(session)) {
-            console.warn("Session already open");
         }
-        console.info("Opening session:", session);
         session.indexInfo.closed = -1;
     }
 
@@ -331,7 +340,6 @@ class SessionRecord {
                 }
             }
             if (oldestKey) {
-                console.info("Removing old closed session:", oldestSession);
                 delete this.sessions[oldestKey];
             } else {
                 throw new Error('Corrupt sessions object');
