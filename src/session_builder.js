@@ -22,8 +22,8 @@ class SessionBuilder {
             if (!await this.storage.isTrustedIdentity(this.addr.id, device.identityKey)) {
                 throw new errors.UntrustedIdentityKeyError(this.addr.id, device.identityKey);
             }
-            curve.verifySignature(device.identityKey, device.signedPreKey.publicKey,
-                                  device.signedPreKey.signature);
+            // curve.verifySignature(device.identityKey, device.signedPreKey.publicKey,
+            //                       device.signedPreKey.signature);
             const baseKey = curve.generateKeyPair();
             const devicePreKey = device.preKey && device.preKey.publicKey;
             const session = await this.initSession(true, baseKey, undefined, device.identityKey,

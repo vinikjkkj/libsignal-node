@@ -3,6 +3,7 @@
 
 const curveJs = require('curve25519-js');
 const nodeCrypto = require('crypto');
+
 // from: https://github.com/digitalbazaar/x25519-key-agreement-key-2019/blob/master/lib/crypto.js
 const PUBLIC_KEY_DER_PREFIX = Buffer.from([
     48, 42, 48, 5, 6, 3, 43, 101, 110, 3, 33, 0
