@@ -10,7 +10,6 @@ function assertBuffer(value) {
         throw new TypeError("Buffer required");
     }
 }
-
 class SessionEntry {
 
     constructor() {
@@ -218,7 +217,7 @@ class SessionRecord {
         this.version = SESSION_RECORD_VERSION;
     }
 
-    async serialize() {
+    serialize() {
         const _sessions = {};
         for (const [key, entry] of Object.entries(this.sessions)) {
             _sessions[key] = entry.serialize();
