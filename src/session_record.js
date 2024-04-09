@@ -11,53 +11,6 @@ function assertBuffer(value) {
     }
 }
 
-const { DynamicPool } = require('node-worker-threads-pool')
-
-const workers = new DynamicPool(5)
-
-function convertFields(data, targetType) {
-    // Verifica se o alvo é um tipo válido
-    if (!(typeof targetType === 'function')) {
-        throw new Error('O tipo alvo é inválido.');
-    }
-
-    // Função auxiliar para verificar e converter um valor
-    function convertValue(value) {
-        // Verifica se o valor é um Uint8Array
-        if (value instanceof Uint8Array) {
-            // Converte o valor para Buffer
-            return Buffer.from(value);
-        }
-        // Se não for Uint8Array, retorna o valor original
-        return value;
-    }
-
-    // Função auxiliar para iterar recursivamente sobre os dados
-    function iterate(obj) {
-        // Verifica se o objeto é um array
-        if (Array.isArray(obj)) {
-            // Se for um array, itera sobre cada elemento
-            return obj.map(item => iterate(item));
-        }
-        // Se for um objeto, itera sobre cada propriedade
-        if (typeof obj === 'object' && obj !== null) {
-            const newObj = {};
-            for (const key in obj) {
-                if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                    // Converte o valor da propriedade
-                    newObj[key] = iterate(obj[key]);
-                }
-            }
-            return newObj;
-        }
-        // Se não for um objeto ou array, retorna o valor convertido
-        return convertValue(obj);
-    }
-
-    // Inicia a iteração recursiva nos dados fornecidos
-    return iterate(data);
-}
-
 class SessionEntry {
 
     constructor() {

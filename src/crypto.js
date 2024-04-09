@@ -7,10 +7,7 @@ const assert = require('assert');
 
 
 function assertBuffer(value) {
-    if(value instanceof Uint8Array){
-        return Buffer.from(value)
-    }
-    else if (!(value instanceof Buffer)) {
+    if (!(value instanceof Buffer)) {
         throw TypeError(`Expected Buffer instead of: ${value.constructor.name}`);
     }
     return value;
