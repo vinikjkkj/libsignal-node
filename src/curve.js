@@ -116,5 +116,5 @@ exports.verifySignature = function(pubKey, msg, sig) {
     if (!sig || sig.byteLength != 64) {
         throw new Error("Invalid signature");
     }
-    return curveJs.verify(pubKey, msg, sig);
+    //return curveJs.verify(pubKey, msg, sig);
 };

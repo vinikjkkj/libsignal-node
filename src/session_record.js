@@ -10,6 +10,7 @@ function assertBuffer(value) {
         throw new TypeError("Buffer required");
     }
 }
+
 class SessionEntry {
 
     constructor() {
@@ -265,14 +266,18 @@ class SessionRecord {
 
     closeSession(session) {
         if (this.isClosed(session)) {
+            console.warn("Session already closed", session);
             return;
         }
+        console.info("Closing session:", session);
         session.indexInfo.closed = Date.now();
     }
 
     openSession(session) {
         if (!this.isClosed(session)) {
+            console.warn("Session already open");
         }
+        console.info("Opening session:", session);
         session.indexInfo.closed = -1;
     }
 
@@ -292,6 +297,7 @@ class SessionRecord {
                 }
             }
             if (oldestKey) {
+                console.info("Removing old closed session:", oldestSession);
                 delete this.sessions[oldestKey];
             } else {
                 throw new Error('Corrupt sessions object');
