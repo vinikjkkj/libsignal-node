@@ -274,7 +274,6 @@ class SessionRecord {
     openSession(session) {
         if (!this.isClosed(session)) {
         }
-        console.info("Opening session:", session);
         session.indexInfo.closed = -1;
     }
 
