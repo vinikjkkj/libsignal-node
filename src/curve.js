@@ -105,7 +105,7 @@ exports.calculateSignature = function(privKey, message) {
     return Buffer.from(curveJs.sign(privKey, message));
 };
 
-exports.verifySignature = function(pubKey, msg, sig) {
+exports.verifySignature = function(pubKey, msg, sig, isInit) {
     pubKey = scrubPubKeyFormat(pubKey);
     if (!pubKey || pubKey.byteLength != 32) {
         throw new Error("Invalid public key");
@@ -116,6 +116,5 @@ exports.verifySignature = function(pubKey, msg, sig) {
     if (!sig || sig.byteLength != 64) {
         throw new Error("Invalid signature");
     }
-    return true
-    //return curveJs.verify(pubKey, msg, sig);
+    return isInit ? true : curveJs.verify(pubKey, msg, sig);
 };
