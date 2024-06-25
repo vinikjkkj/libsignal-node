@@ -25,7 +25,7 @@ exports.generateSignedPreKey = function(identityKeyPair, signedKeyId) {
         throw new TypeError('Invalid argument for signedKeyId: ' + signedKeyId);
     }
     const keyPair = curve.generateKeyPair();
-    const sig = curve.calculateSignature(identityKeyPair.privKey, keyPair.pubKey);
+    const sig = curve.calculateSignature(identityKeyPair.privKey, identityKeyPair.pubKey, keyPair.pubKey);
     return {
         keyId: signedKeyId,
         keyPair: keyPair,

@@ -3,16 +3,6 @@
 
 const curveJs = require('curve25519-js');
 const sodium = require('libsodium-wrappers')
-const nodeCrypto = require('crypto');
-
-// from: https://github.com/digitalbazaar/x25519-key-agreement-key-2019/blob/master/lib/crypto.js
-const PUBLIC_KEY_DER_PREFIX = Buffer.from([
-    48, 42, 48, 5, 6, 3, 43, 101, 110, 3, 33, 0
-]);
-  
-const PRIVATE_KEY_DER_PREFIX = Buffer.from([
-    48, 46, 2, 1, 0, 48, 5, 6, 3, 43, 101, 110, 4, 34, 4, 32
-]);
 
 function validatePrivKey(privKey) {
     if (privKey === undefined) {
@@ -41,15 +31,18 @@ function scrubPubKeyFormat(pubKey) {
 }
 
 exports.generateKeyPair = function() {
-    const keyPair = sodium.crypto_box_keypair()
+    const keys = sodium.crypto_box_keypair()
+    const pubKey = Buffer.alloc(33)
+    pubKey[0] = 5
+    pubKey.set(keys.publicKey, 1)
     return {
-        privKey: Buffer.from(keyPair.privateKey),
-        pubKey: Buffer.from(keyPair.publicKey),
-    };
+        privKey: Buffer.from(keys.privateKey),
+        pubKey
+    }
 };
 
 exports.calculateAgreement = function(pubKey, privKey) {
-    const secret = sodium.crypto_scalarmult(privKey, pubKey)
+    const secret = sodium.crypto_scalarmult(privKey, scrubPubKeyFormat(pubKey))
     return Buffer.from(secret);
 };
 
