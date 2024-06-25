@@ -2,6 +2,7 @@
 'use strict';
 
 const curveJs = require('curve25519-js');
+const sodium = require('libsodium-wrappers')
 const nodeCrypto = require('crypto');
 
 // from: https://github.com/digitalbazaar/x25519-key-agreement-key-2019/blob/master/lib/crypto.js
@@ -40,64 +41,19 @@ function scrubPubKeyFormat(pubKey) {
 }
 
 exports.generateKeyPair = function() {
-    if(typeof nodeCrypto.generateKeyPairSync === 'function') {
-        const {publicKey: publicDerBytes, privateKey: privateDerBytes} = nodeCrypto.generateKeyPairSync(
-            'x25519',
-            {
-                publicKeyEncoding: { format: 'der', type: 'spki' },
-                privateKeyEncoding: { format: 'der', type: 'pkcs8' }
-            }
-        );
-        // 33 bytes
-        // first byte = 5 (version byte)
-        const pubKey = publicDerBytes.slice(PUBLIC_KEY_DER_PREFIX.length-1, PUBLIC_KEY_DER_PREFIX.length + 32);
-        pubKey[0] = 5;
-    
-        const privKey = privateDerBytes.slice(PRIVATE_KEY_DER_PREFIX.length, PRIVATE_KEY_DER_PREFIX.length + 32);
-    
-        return {
-            pubKey,
-            privKey
-        };
-    } else {
-        const keyPair = curveJs.generateKeyPair(nodeCrypto.randomBytes(32));
-        return {
-            privKey: Buffer.from(keyPair.private),
-            pubKey: Buffer.from(keyPair.public),
-        };
-    }
+    const keyPair = sodium.crypto_box_keypair()
+    return {
+        privKey: Buffer.from(keyPair.privateKey),
+        pubKey: Buffer.from(keyPair.publicKey),
+    };
 };
 
 exports.calculateAgreement = function(pubKey, privKey) {
-    pubKey = scrubPubKeyFormat(pubKey);
-    validatePrivKey(privKey);
-    if (!pubKey || pubKey.byteLength != 32) {
-        throw new Error("Invalid public key");
-    }
-
-    if(typeof nodeCrypto.diffieHellman === 'function') {
-        const nodePrivateKey = nodeCrypto.createPrivateKey({
-            key: Buffer.concat([PRIVATE_KEY_DER_PREFIX, privKey]),
-            format: 'der',
-            type: 'pkcs8'
-        });
-        const nodePublicKey = nodeCrypto.createPublicKey({
-            key: Buffer.concat([PUBLIC_KEY_DER_PREFIX, pubKey]),
-            format: 'der',
-            type: 'spki'
-        });
-        
-        return nodeCrypto.diffieHellman({
-            privateKey: nodePrivateKey,
-            publicKey: nodePublicKey,
-        });
-    } else {
-        const secret = curveJs.sharedKey(privKey, pubKey);
-        return Buffer.from(secret);
-    }
+    const secret = sodium.crypto_scalarmult(privKey, pubKey)
+    return Buffer.from(secret);
 };
 
-exports.calculateSignature = function(privKey, message) {
+exports.calculateSignature = function(privKey, publicKey, message) {
     validatePrivKey(privKey);
     if (!message) {
         throw new Error("Invalid message");
@@ -118,3 +74,7 @@ exports.verifySignature = function(pubKey, msg, sig, isInit) {
     }
     return isInit ? true : curveJs.verify(pubKey, msg, sig);
 };
+
+exports.initSodium = async () => {
+    await sodium.ready
+}
