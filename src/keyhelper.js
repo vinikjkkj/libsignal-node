@@ -1,5 +1,3 @@
-// vim: ts=4:sw=4:expandtab
-
 const curve = require('./curve');
 const nodeCrypto = require('crypto');
 

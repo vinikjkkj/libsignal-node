@@ -272,8 +272,6 @@ class SessionRecord {
     }
 
     openSession(session) {
-        if (!this.isClosed(session)) {
-        }
         session.indexInfo.closed = -1;
     }
 

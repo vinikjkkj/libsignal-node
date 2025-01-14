@@ -158,7 +158,6 @@ class SessionCipher {
     }
 
     async decryptWhisperMessage(data) {
-        assertBuffer(data);
         return await this.queueJob(async () => {
             const record = await this.getRecord();
             if (!record) {
@@ -209,7 +208,6 @@ class SessionCipher {
     }
 
     async doDecryptWhisperMessage(messageBuffer, session) {
-        assertBuffer(messageBuffer);
         if (!session) {
             throw new TypeError("session required");
         }
