@@ -9,6 +9,7 @@ const _queueAsyncBuckets = new Map();
  * @returns {Promise} Promessa resolvida ou rejeitada após a execução do job.
  */
 module.exports = function (bucket, awaitable) {
+    return awaitable();
     if (!_queueAsyncBuckets.has(bucket)) {
         _queueAsyncBuckets.set(bucket, { queue: [], active: false });
     }
