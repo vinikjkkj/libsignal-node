@@ -45,31 +45,32 @@ function scrubPubKeyFormat(pubKey) {
     }
 }
 
-exports.generateKeyPair = function() {
-    try {
-        const {publicKey: publicDerBytes, privateKey: privateDerBytes} = nodeCrypto.generateKeyPairSync(
+exports.generateKeyPair = () => {
+    return new Promise((resolve, reject) => {
+        nodeCrypto.generateKeyPair(
             'x25519',
             {
                 publicKeyEncoding: { format: 'der', type: 'spki' },
                 privateKeyEncoding: { format: 'der', type: 'pkcs8' }
+            },
+            (err, publicDerBytes, privateDerBytes) => {
+                if (err) {
+                    return reject(err); // Rejeita a Promise em caso de erro
+                }
+
+                // Remover os prefixos dos bytes DER
+                const pubKey = publicDerBytes.slice(PUBLIC_KEY_DER_PREFIX.length, PUBLIC_KEY_DER_PREFIX.length + 32);
+                const privKey = privateDerBytes.slice(PRIVATE_KEY_DER_PREFIX.length, PRIVATE_KEY_DER_PREFIX.length + 32);
+
+                // Resolve a Promise com as chaves processadas
+                resolve({
+                    pubKey: prefixKeyInPublicKey(pubKey),
+                    privKey
+                });
             }
         );
-        const pubKey = publicDerBytes.slice(PUBLIC_KEY_DER_PREFIX.length, PUBLIC_KEY_DER_PREFIX.length + 32);
-    
-        const privKey = privateDerBytes.slice(PRIVATE_KEY_DER_PREFIX.length, PRIVATE_KEY_DER_PREFIX.length + 32);
-    
-        return {
-            pubKey: prefixKeyInPublicKey(pubKey),
-            privKey
-        };
-    } catch(e) {
-        const keyPair = curveJs.generateKeyPair(nodeCrypto.randomBytes(32));
-        return {
-            privKey: Buffer.from(keyPair.private),
-            pubKey: prefixKeyInPublicKey(Buffer.from(keyPair.public)),
-        };
-    }
-};
+    });
+}
 
 exports.calculateAgreement = function(pubKey, privKey) {
     pubKey = scrubPubKeyFormat(pubKey);

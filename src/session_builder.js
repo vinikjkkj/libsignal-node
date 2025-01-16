@@ -24,7 +24,7 @@ class SessionBuilder {
             }
             curve.verifySignature(device.identityKey, device.signedPreKey.publicKey,
                                   device.signedPreKey.signature, true);
-            const baseKey = curve.generateKeyPair();
+            const baseKey = await curve.generateKeyPair();
             const devicePreKey = device.preKey && device.preKey.publicKey;
             const session = await this.initSession(true, baseKey, undefined, device.identityKey,
                                                    devicePreKey, device.signedPreKey.publicKey,
@@ -121,7 +121,7 @@ class SessionBuilder {
         session.registrationId = registrationId;
         session.currentRatchet = {
             rootKey: masterKey[0],
-            ephemeralKeyPair: isInitiator ? curve.generateKeyPair() : ourSignedKey,
+            ephemeralKeyPair: isInitiator ? await curve.generateKeyPair() : ourSignedKey,
             lastRemoteEphemeralKey: theirSignedPubKey,
             previousCounter: 0
         };

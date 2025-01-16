@@ -217,7 +217,7 @@ class SessionCipher {
         }
         const messageProto = messageBuffer.slice(1, -8);
         const message = protobufs.WhisperMessage.decode(messageProto);
-        this.maybeStepRatchet(session, message.ephemeralKey, message.previousCounter);
+        await this.maybeStepRatchet(session, message.ephemeralKey, message.previousCounter);
         const chain = session.getChain(message.ephemeralKey);
         if (chain.chainType === ChainType.SENDING) {
             throw new Error("Tried to decrypt on a sending chain");
@@ -263,7 +263,7 @@ class SessionCipher {
         return this.fillMessageKeys(chain, counter);
     }
 
-    maybeStepRatchet(session, remoteKey, previousCounter) {
+    async maybeStepRatchet(session, remoteKey, previousCounter) {
         if (session.getChain(remoteKey)) {
             return;
         }
@@ -280,7 +280,7 @@ class SessionCipher {
             ratchet.previousCounter = prevCounter.chainKey.counter;
             session.deleteChain(ratchet.ephemeralKeyPair.pubKey);
         }
-        ratchet.ephemeralKeyPair = curve.generateKeyPair();
+        ratchet.ephemeralKeyPair = await curve.generateKeyPair();
         this.calculateRatchet(session, remoteKey, true);
         ratchet.lastRemoteEphemeralKey = remoteKey;
     }
