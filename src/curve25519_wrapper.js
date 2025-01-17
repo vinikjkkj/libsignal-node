@@ -1,19 +1,4 @@
-// vim: ts=4:sw=4:expandtab
-
 const crypto = require('../build/Release/signal_crypto');
-
-// Insert some bytes into the emscripten memory and return a pointer
-function _allocate(bytes) {
-    const address = crypto._malloc(bytes.length);
-    crypto.HEAPU8.set(bytes, address);
-
-    return address;
-}
-
-function _readBytes(address, length, array) {
-    array.set(crypto.HEAPU8.subarray(address, address + length));
-}
-
 const basepoint = new Uint8Array(32);
 basepoint[0] = 9;
 
@@ -32,6 +17,10 @@ exports.keyPair = function(privKey) {
 };
 
 exports.sharedSecret = function(pubKey, privKey) {
+    privKey[0]  &= 248;
+    privKey[31] &= 127;
+    privKey[31] |= 64;
+
     return crypto.curve25519_donna(new Uint8Array(privKey), new Uint8Array(pubKey)).buffer;
 };
 

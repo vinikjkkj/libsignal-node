@@ -1,5 +1,32 @@
 const assert = require('assert');
 const curve = require('./src/curve25519_wrapper');
+const nodeCrypto = require('crypto');
+
+const PUBLIC_KEY_DER_PREFIX = Buffer.from([
+    48, 42, 48, 5, 6, 3, 43, 101, 110, 3, 33, 0
+]);
+  
+const PRIVATE_KEY_DER_PREFIX = Buffer.from([
+    48, 46, 2, 1, 0, 48, 5, 6, 3, 43, 101, 110, 4, 34, 4, 32
+]);
+
+const generateKeyPairCrypto = function() {
+    const {publicKey: publicDerBytes, privateKey: privateDerBytes} = nodeCrypto.generateKeyPairSync(
+        'x25519',
+        {
+            publicKeyEncoding: { format: 'der', type: 'spki' },
+            privateKeyEncoding: { format: 'der', type: 'pkcs8' }
+        }
+    );
+    const pubKey = publicDerBytes.slice(PUBLIC_KEY_DER_PREFIX.length, PUBLIC_KEY_DER_PREFIX.length + 32);
+
+    const privKey = privateDerBytes.slice(PRIVATE_KEY_DER_PREFIX.length, PRIVATE_KEY_DER_PREFIX.length + 32);
+
+    return {
+        pubKey,
+        privKey
+    };
+};
 
 console.log('Running tests...\n');
 
@@ -21,16 +48,9 @@ try {
 
 // Test 2: Shared Secret
 console.log('Test 2: Shared Secret');
-try {
-    const alicePrivate = new Uint8Array(32);
-    const bobPrivate = new Uint8Array(32);
-    for(let i = 0; i < 32; i++) {
-        alicePrivate[i] = i;
-        bobPrivate[i] = 31 - i;
-    }
-    
-    const aliceKeyPair = curve.keyPair(alicePrivate);
-    const bobKeyPair = curve.keyPair(bobPrivate);
+try {    
+    const aliceKeyPair = generateKeyPairCrypto();
+    const bobKeyPair = generateKeyPairCrypto();
     
     const aliceShared = curve.sharedSecret(bobKeyPair.pubKey, aliceKeyPair.privKey);
     const bobShared = curve.sharedSecret(aliceKeyPair.pubKey, bobKeyPair.privKey);
@@ -48,6 +68,39 @@ try {
     console.error('✗ Shared secret generation failed:', err, '\n');
 }
 
+// Test 2: Shared Secret And Crypto
+console.log('Test 2: Shared Secret and Crypto');
+try {
+    const aliceKeyPair = generateKeyPairCrypto();
+    const bobKeyPair = generateKeyPairCrypto();
+
+    const aliceSharedCurve = curve.sharedSecret(bobKeyPair.pubKey, aliceKeyPair.privKey);
+    const nodePrivateKey = nodeCrypto.createPrivateKey({
+        key: Buffer.concat([PRIVATE_KEY_DER_PREFIX, Buffer.from(aliceKeyPair.privKey)]),
+        format: 'der',
+        type: 'pkcs8'
+    });
+    const nodePublicKey = nodeCrypto.createPublicKey({
+        key: Buffer.concat([PUBLIC_KEY_DER_PREFIX, Buffer.from(bobKeyPair.pubKey)]),
+        format: 'der',
+        type: 'spki'
+    });
+    
+    const aliceSharedCrypto =nodeCrypto.diffieHellman({
+        privateKey: nodePrivateKey,
+        publicKey: nodePublicKey,
+    });
+    // Convert ArrayBuffers to arrays for comparison
+    const aliceSharedArrayCurve = Array.from(new Uint8Array(aliceSharedCurve));
+    const aliceSharedArrayCrypto = Array.from(new Uint8Array(aliceSharedCrypto));
+    
+    console.log('curveResult is:', typeof aliceSharedCurve);
+    assert.deepStrictEqual(aliceSharedArrayCurve, aliceSharedArrayCrypto, 'Shared secrets should match');
+    console.log('✓ Shared secret generation works\n');
+} catch (err) {
+    console.error('✗ Shared secret generation failed:', err, '\n');
+}
+
 // Test 3: Signing and Verification
 console.log('Test 3: Signing and Verification');
 try {
@@ -55,11 +108,9 @@ try {
     for(let i = 0; i < 32; i++) privateKey[i] = i;
     
     const keyPair = curve.keyPair(privateKey);
-    console.log(keyPair);
     const message = new Uint8Array([1, 2, 3, 4, 5]);
     
     const signature = curve.sign(keyPair.privKey, message);
-    console.log(signature);
     assert(signature instanceof ArrayBuffer, 'Signature should be ArrayBuffer');
     assert(signature.byteLength === 64, 'Signature should be 64 bytes');
     
