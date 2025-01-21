@@ -1,4 +1,3 @@
-
 'use strict';
 
 const curve25519 = require('../src/curve25519_wrapper');
@@ -32,9 +31,9 @@ function scrubPubKeyFormat(pubKey) {
     }
 }
 
-exports.createKeyPair = function(privKey) {
+exports.createKeyPair = async function(privKey) {
     validatePrivKey(privKey);
-    const keys = curve25519.keyPair(privKey);
+    const keys = await curve25519.keyPair(privKey);
     // prepend version byte
     var origPub = new Uint8Array(keys.pubKey);
     var pub = new Uint8Array(33);
@@ -46,24 +45,24 @@ exports.createKeyPair = function(privKey) {
     };
 };
 
-exports.calculateAgreement = function(pubKey, privKey) {
+exports.calculateAgreement = async function(pubKey, privKey) {
     pubKey = scrubPubKeyFormat(pubKey);
     validatePrivKey(privKey);
     if (!pubKey || pubKey.byteLength != 32) {
         throw new Error("Invalid public key");
     }
-    return Buffer.from(curve25519.sharedSecret(pubKey, privKey));
+    return Buffer.from(await curve25519.sharedSecret(pubKey, privKey));
 };
 
-exports.calculateSignature = function(privKey, message) {
+exports.calculateSignature = async function(privKey, message) {
     validatePrivKey(privKey);
     if (!message) {
         throw new Error("Invalid message");
     }
-    return Buffer.from(curve25519.sign(privKey, message));
+    return Buffer.from(await curve25519.sign(privKey, message));
 };
 
-exports.verifySignature = function(pubKey, msg, sig, isInit) {
+exports.verifySignature = async function(pubKey, msg, sig, isInit) {
     pubKey = scrubPubKeyFormat(pubKey);
     if (!pubKey || pubKey.byteLength != 32) {
         throw new Error("Invalid public key");
@@ -74,10 +73,10 @@ exports.verifySignature = function(pubKey, msg, sig, isInit) {
     if (!sig || sig.byteLength != 64) {
         throw new Error("Invalid signature");
     }
-    return isInit ? true : curve25519.verify(pubKey, msg, sig);
+    return isInit ? true : await curve25519.verify(pubKey, msg, sig);
 };
 
-exports.generateKeyPair = function() {
+exports.generateKeyPair = async function() {
     const privKey = nodeCrypto.randomBytes(32);
     return exports.createKeyPair(privKey);
 };
