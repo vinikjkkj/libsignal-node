@@ -273,7 +273,7 @@ class SessionCipher {
             this.fillMessageKeys(previousRatchet, previousCounter);
             delete previousRatchet.chainKey.key;  // Close
         }
-        this.calculateRatchet(session, remoteKey, false);
+        await this.calculateRatchet(session, remoteKey, false);
         // Now swap the ephemeral key and calculate the new sending chain
         const prevCounter = session.getChain(ratchet.ephemeralKeyPair.pubKey);
         if (prevCounter) {
@@ -281,13 +281,13 @@ class SessionCipher {
             session.deleteChain(ratchet.ephemeralKeyPair.pubKey);
         }
         ratchet.ephemeralKeyPair = await curve.generateKeyPair();
-        this.calculateRatchet(session, remoteKey, true);
+        await this.calculateRatchet(session, remoteKey, true);
         ratchet.lastRemoteEphemeralKey = remoteKey;
     }
 
-    calculateRatchet(session, remoteKey, sending) {
+    async calculateRatchet(session, remoteKey, sending) {
         let ratchet = session.currentRatchet;
-        const sharedSecret = curve.calculateAgreement(remoteKey, ratchet.ephemeralKeyPair.privKey);
+        const sharedSecret = await curve.calculateAgreement(remoteKey, ratchet.ephemeralKeyPair.privKey);
         const masterKey = crypto.deriveSecrets(sharedSecret, ratchet.rootKey,
                                                Buffer.from("WhisperRatchet"), /*chunks*/ 2);
         const chainKey = sending ? ratchet.ephemeralKeyPair.pubKey : remoteKey;

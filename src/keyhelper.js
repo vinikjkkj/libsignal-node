@@ -23,7 +23,7 @@ exports.generateSignedPreKey = async function(identityKeyPair, signedKeyId) {
         throw new TypeError('Invalid argument for signedKeyId: ' + signedKeyId);
     }
     const keyPair = await curve.generateKeyPair();
-    const sig = curve.calculateSignature(identityKeyPair.privKey, keyPair.pubKey);
+    const sig = await curve.calculateSignature(identityKeyPair.privKey, keyPair.pubKey);
     return {
         keyId: signedKeyId,
         keyPair: keyPair,
